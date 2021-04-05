@@ -1,0 +1,25 @@
+# Create the storage class and persistent volumne claim
+kind: StorageClass
+apiVersion: storage.k8s.io/v1beta1
+metadata:
+  name: azure-disk
+provisioner: kubernetes.io/azure-disk
+parameters:
+  storageaccounttype: Standard_LRS  # This is a general purpose kind of storage
+                                    # for production a faster, premium storage is mostly used.
+                                    # Use kubectl command to list all storage options.
+                                    # --> kubectl get storageClass
+  kind: Managed
+---
+kind: PersistentVolumeClaim
+apiVersion: v1
+metadata:
+  name: mssql-data
+  annotations:
+    volume.beta.kubernetes.io/storage-class: azure-disk # This points back to the StorageClass above.
+spec:
+  accessModes:
+  - ReadWriteOnce # Indicates that the storage can only be accessed by one container at a time.
+  resources:
+    requests:
+      storage: 8Gi # Amount of allocated storage.

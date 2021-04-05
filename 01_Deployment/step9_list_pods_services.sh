@@ -1,0 +1,6 @@
+# List the running pods and services
+echo List pods...
+kubectl get pods
+
+echo List services...
+kubectl get services

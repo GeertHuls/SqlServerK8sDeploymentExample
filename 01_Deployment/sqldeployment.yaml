@@ -1,0 +1,53 @@
+# Create the SQL Server deployment
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: mssql-deployment
+spec:
+  replicas: 1 # A replicaset always makes sure an instance of that pod is running.
+  selector:
+    matchLabels:
+      app: mssql # This is name of the sql server pod.
+  strategy:
+    type: Recreate
+  template:
+    metadata:
+      labels:
+        app: mssql  # This is the name of the sql server pod.
+                    # This selector tells the replicaset the mssql
+                    # is the pod that is going to be replicated.
+                    # Also this name is also associated with the load balancer,
+                    # specified in sqlloadbalancer.yaml.
+    spec:
+      terminationGracePeriodSeconds: 10
+      securityContext:
+        fsGroup: 1000 # With sql server 2019, Microsoft began running their containers as non-root users.
+                      # This could result in a container not been able to write to the peristed value.
+                      # The security context fsGroup 1000, specifies the 1000 level security rights for
+                      # that sql server user in the container. This allows the container to access those
+                      # persisted volumes. This applies to sql server 2019 and higher.
+      containers:
+      - name: mssql
+        image: mcr.microsoft.com/mssql/rhel/server:2019-latest # Is a red hat enterprise linux image.
+        env:
+        - name: MSSQL_PID
+          value: "Developer" # Speficies we're using the free sql server 2019 developer edition.
+        - name: ACCEPT_EULA
+          value: "Y"
+        - name: MSSQL_SA_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              name: mssql-secret
+              key: SA_PASSWORD 
+        volumeMounts:
+        - name: mssqldb
+          mountPath: /var/opt/mssql # Default path for the SQL server on linux databases.
+                                    # It maps the directory in the container to the external storage
+                                    # described by the persisted volume claim (cfr sqlstorage.yaml).
+                                    
+      volumes:
+      - name: mssqldb
+        persistentVolumeClaim:
+          claimName: mssql-data # The persisted volume claim was named mssql-data (cfr sqlstorage.yaml).
+              # With sql 2019, iy uses a featured called accelerated database recovery that makes the recovery
+              # process faster with external storage.
